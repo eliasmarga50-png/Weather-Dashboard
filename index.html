@@ -27,13 +27,84 @@
                     aria-label="Enter city name"
                     autocomplete="off"
                 >
-                <button type="submit" class="search-button">Search</button>
+                <button type="submit" class="search-button" id="search-button">
+                    Search
+                </button>
             </form>
 
             <button type="button" class="location-button" id="location-button">
                 <span>📍</span>
                 Use My Location
             </button>
+
+            <p class="search-status" id="search-status" aria-live="polite"></p>
+        </section>
+
+        <section class="weather-dashboard hidden" id="weather-dashboard">
+            <div class="current-weather-card">
+                <div class="current-weather-header">
+                    <div>
+                        <h2 id="location-name">Location</h2>
+                        <p class="local-time" id="local-time"></p>
+                    </div>
+                    <div class="main-weather-icon" id="main-weather-icon">🌤️</div>
+                </div>
+
+                <div class="current-weather-main">
+                    <div class="temperature-display">
+                        <span id="current-temperature">--</span>
+                        <span class="temperature-unit" id="current-unit">°C</span>
+                    </div>
+                    <p class="weather-description" id="weather-description">Weather condition</p>
+                </div>
+
+                <div class="weather-metrics">
+                    <article class="metric-card">
+                        <span class="metric-icon">💧</span>
+                        <h3>Humidity</h3>
+                        <p>
+                            <span id="humidity">--</span><span class="metric-unit">%</span>
+                        </p>
+                    </article>
+
+                    <article class="metric-card">
+                        <span class="metric-icon">💨</span>
+                        <h3>Wind Speed</h3>
+                        <p>
+                            <span id="wind-speed">--</span>
+                            <span class="metric-unit">km/h</span>
+                        </p>
+                    </article>
+
+                    <article class="metric-card">
+                        <span class="metric-icon">🌡️</span>
+                        <h3>Feels Like</h3>
+                        <p>
+                            <span id="feels-like">--</span>
+                            <span class="metric-unit temperature-unit-small">°C</span>
+                        </p>
+                    </article>
+
+                    <article class="metric-card">
+                        <span class="metric-icon">🌧️</span>
+                        <h3>Precipitation</h3>
+                        <p>
+                            <span id="precipitation">--</span>
+                            <span class="metric-unit">mm</span>
+                        </p>
+                    </article>
+                </div>
+
+                <div class="temperature-switch">
+                    <button type="button" class="unit-button active" id="celsius-button">°C</button>
+                    <button type="button" class="unit-button" id="fahrenheit-button">°F</button>
+                </div>
+            </div>
+
+            <section class="forecast-section">
+                <h2>5-Day Forecast</h2>
+                <div class="forecast-grid" id="forecast-grid"></div>
+            </section>
         </section>
 
         <section class="recent-searches-section">
@@ -58,5 +129,8 @@
             </p>
         </footer>
     </main>
+
+    <script src="js/weather.js"></script>
+    <script src="js/app.js"></script>
 </body>
 </html>
