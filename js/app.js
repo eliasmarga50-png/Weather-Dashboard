@@ -22,9 +22,12 @@ const forecastGrid = document.getElementById("forecast-grid");
 const celsiusButton = document.getElementById("celsius-button");
 const fahrenheitButton = document.getElementById("fahrenheit-button");
 
+const recentSearchesContainer = document.getElementById("recent-searches");
+const clearSearchesButton = document.getElementById("clear-searches");
+
 let currentWeatherData = null;
 let currentCityData = null;
-let currentUnitPreference = "celsius";
+let currentUnitPreference = getTemperaturePreference();
 
 searchForm.addEventListener("submit", async (event) => {
     event.preventDefault();
@@ -40,23 +43,130 @@ searchForm.addEventListener("submit", async (event) => {
     await loadCityWeather(city);
 });
 
+locationButton.addEventListener("click", loadLocationWeather);
+
+celsiusButton.addEventListener("click", () => {
+    setTemperatureUnit("celsius");
+});
+
+fahrenheitButton.addEventListener("click", () => {
+    setTemperatureUnit("fahrenheit");
+});
+
+clearSearchesButton.addEventListener("click", () => {
+    clearRecentSearches();
+    renderRecentSearches();
+    showStatus("Recent searches cleared.", "success");
+});
+
 async function loadCityWeather(city) {
     setLoading(true);
     showStatus(`Searching weather for ${city}...`);
 
     try {
         const cityData = await searchCity(city);
-        const weatherData = await getWeather(cityData.latitude, cityData.longitude);
 
-        currentCityData = cityData;
+        const weatherData = await getWeather(
+            cityData.latitude,
+            cityData.longitude
+        );
+
+        const normalizedCity = {
+            name: cityData.name,
+            displayName: getFullLocationName(cityData),
+            latitude: cityData.latitude,
+            longitude: cityData.longitude,
+            country: cityData.country || "",
+            admin1: cityData.admin1 || ""
+        };
+
+        currentCityData = normalizedCity;
         currentWeatherData = weatherData;
 
-        renderWeatherDashboard(cityData, weatherData);
-        showStatus(`Weather loaded for ${cityData.name}.`, "success");
+        saveRecentSearch(normalizedCity);
+        renderRecentSearches();
+        renderWeatherDashboard(normalizedCity, weatherData);
 
         weatherDashboard.classList.remove("hidden");
+        cityInput.value = "";
+
+        showStatus(`Weather loaded for ${cityData.name}.`, "success");
     } catch (error) {
-        showStatus(error.message || "Something went wrong. Please try again.", "error");
+        showStatus(
+            error.message || "Something went wrong. Please try again.",
+            "error"
+        );
+    } finally {
+        setLoading(false);
+    }
+}
+
+async function loadLocationWeather() {
+    setLoading(true);
+    showStatus("Detecting your location...");
+
+    try {
+        const coordinates = await getCurrentLocation();
+
+        const weatherData = await getWeather(
+            coordinates.latitude,
+            coordinates.longitude
+        );
+
+        const locationData = {
+            name: "Your Location",
+            displayName: "Your Location",
+            latitude: coordinates.latitude,
+            longitude: coordinates.longitude,
+            country: "",
+            admin1: ""
+        };
+
+        currentCityData = locationData;
+        currentWeatherData = weatherData;
+
+        saveRecentSearch(locationData);
+        renderRecentSearches();
+        renderWeatherDashboard(locationData, weatherData);
+
+        weatherDashboard.classList.remove("hidden");
+
+        showStatus("Weather loaded for your current location.", "success");
+    } catch (error) {
+        showStatus(
+            error.message || "Unable to detect your location.",
+            "error"
+        );
+    } finally {
+        setLoading(false);
+    }
+}
+
+async function loadRecentWeather(search) {
+    setLoading(true);
+    showStatus(`Loading weather for ${search.displayName}...`);
+
+    try {
+        const weatherData = await getWeather(
+            search.latitude,
+            search.longitude
+        );
+
+        currentCityData = search;
+        currentWeatherData = weatherData;
+
+        saveRecentSearch(search);
+        renderRecentSearches();
+        renderWeatherDashboard(search, weatherData);
+
+        weatherDashboard.classList.remove("hidden");
+
+        showStatus(`Weather loaded for ${search.displayName}.`, "success");
+    } catch (error) {
+        showStatus(
+            error.message || "Unable to retrieve weather data.",
+            "error"
+        );
     } finally {
         setLoading(false);
     }
@@ -67,7 +177,7 @@ function renderWeatherDashboard(cityData, weatherData) {
     const timezone = weatherData.timezone;
     const condition = getWeatherInfo(current.weather_code);
 
-    locationName.textContent = getFullLocationName(cityData);
+    locationName.textContent = cityData.displayName;
     localTime.textContent = `Local time: ${formatLocalTime(current.time, timezone)}`;
     mainWeatherIcon.textContent = condition.icon;
     weatherDescription.textContent = condition.description;
@@ -77,7 +187,6 @@ function renderWeatherDashboard(cityData, weatherData) {
     precipitationElement.textContent = current.precipitation.toFixed(1);
 
     renderTemperature();
-    renderForecast(weatherData.daily, timezone);
 }
 
 function getFullLocationName(cityData) {
@@ -107,10 +216,13 @@ function renderTemperature() {
 
     currentTemperature.textContent = Math.round(temperature);
     feelsLikeElement.textContent = feelsLike.toFixed(1);
-    currentUnit.textContent = currentUnitPreference === "celsius" ? "°C" : "°F";
+
+    const unitSymbol = currentUnitPreference === "celsius" ? "°C" : "°F";
+
+    currentUnit.textContent = unitSymbol;
 
     document.querySelectorAll(".temperature-unit-small").forEach((element) => {
-        element.textContent = currentUnitPreference === "celsius" ? "°C" : "°F";
+        element.textContent = unitSymbol;
     });
 
     renderForecast(currentWeatherData.daily, currentWeatherData.timezone);
@@ -142,25 +254,16 @@ function renderForecast(daily, timezone) {
             <span class="forecast-icon">${condition.icon}</span>
             <p class="forecast-description">${condition.description}</p>
             <p class="forecast-temperatures">${maxTemperature}° / ${minTemperature}°</p>
-            <p class="forecast-rain">
-                💧 ${rainProbability ?? 0}% rain
-            </p>
+            <p class="forecast-rain">💧 ${rainProbability ?? 0}% rain</p>
         `;
 
         forecastGrid.appendChild(forecastCard);
     }
 }
 
-celsiusButton.addEventListener("click", () => {
-    setTemperatureUnit("celsius");
-});
-
-fahrenheitButton.addEventListener("click", () => {
-    setTemperatureUnit("fahrenheit");
-});
-
 function setTemperatureUnit(unit) {
     currentUnitPreference = unit;
+    saveTemperaturePreference(unit);
 
     celsiusButton.classList.toggle("active", unit === "celsius");
     fahrenheitButton.classList.toggle("active", unit === "fahrenheit");
@@ -170,6 +273,35 @@ function setTemperatureUnit(unit) {
     }
 }
 
+function renderRecentSearches() {
+    const searches = getRecentSearches();
+
+    recentSearchesContainer.innerHTML = "";
+
+    if (searches.length === 0) {
+        const emptyMessage = document.createElement("p");
+        emptyMessage.className = "empty-searches";
+        emptyMessage.textContent = "No recent searches.";
+
+        recentSearchesContainer.appendChild(emptyMessage);
+        return;
+    }
+
+    searches.forEach((search) => {
+        const button = document.createElement("button");
+
+        button.type = "button";
+        button.className = "recent-search-item";
+        button.textContent = search.displayName;
+
+        button.addEventListener("click", () => {
+            loadRecentWeather(search);
+        });
+
+        recentSearchesContainer.appendChild(button);
+    });
+}
+
 function showStatus(message, type = "") {
     searchStatus.textContent = message;
     searchStatus.className = `search-status ${type}`;
@@ -177,10 +309,27 @@ function showStatus(message, type = "") {
 
 function setLoading(isLoading) {
     searchButton.disabled = isLoading;
+    locationButton.disabled = isLoading;
     cityInput.disabled = isLoading;
+
     searchButton.textContent = isLoading ? "Loading..." : "Search";
+    locationButton.textContent = isLoading
+        ? "Please wait..."
+        : "📍 Use My Location";
 }
 
-locationButton.addEventListener("click", () => {
-    showStatus("Location search will be implemented in Commit 3.");
-});
+function initializeApp() {
+    celsiusButton.classList.toggle(
+        "active",
+        currentUnitPreference === "celsius"
+    );
+
+    fahrenheitButton.classList.toggle(
+        "active",
+        currentUnitPreference === "fahrenheit"
+    );
+
+    renderRecentSearches();
+}
+
+initializeApp();
