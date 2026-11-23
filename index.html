@@ -4,181 +4,203 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="description" content="Check current weather conditions and forecasts for any city with Weather Dashboard.">
-    <title>Weather Dashboard</title>
+    <meta name="description" content="A modern weather dashboard with live weather, five-day forecasts, location search, and AI weather insights.">
+    <meta name="theme-color" content="#101827">
+    <title>Weatherly — Weather Dashboard</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="css/styles.css">
 </head>
 <body>
-    <main class="app-container">
-        <header class="page-header">
-            <div class="title-wrapper">
-                <span class="header-icon">🌤️</span>
-                <h1>Weather Dashboard</h1>
+    <div class="app-shell">
+        <header class="topbar">
+            <a href="#" class="brand" aria-label="Weatherly home">
+                <span class="brand-icon">☀</span>
+                <span>Weatherly</span>
+            </a>
+
+            <div class="topbar-actions">
+                <div class="temperature-toggle" aria-label="Temperature unit">
+                    <button type="button" id="celsius-button" class="unit-button active" aria-pressed="true">°C</button>
+                    <button type="button" id="fahrenheit-button" class="unit-button" aria-pressed="false">°F</button>
+                </div>
             </div>
-            <p>Check current weather and forecast for any city</p>
         </header>
 
-        <section class="search-section">
-            <form class="search-form" id="search-form">
-                <input
-                    type="text"
-                    id="city-input"
-                    placeholder="Enter city name..."
-                    aria-label="Enter city name"
-                    autocomplete="off"
-                >
-                <button type="submit" class="search-button" id="search-button">
-                    Search
-                </button>
-            </form>
+        <main class="main-container">
+            <section class="hero-section">
+                <div class="hero-copy">
+                    <span class="eyebrow">YOUR PERSONAL WEATHER STATION</span>
+                    <h1>Weather, made <span>simple.</span></h1>
+                    <p>Know what’s happening outside and plan your day with confidence.</p>
+                </div>
 
-            <button type="button" class="location-button" id="location-button">
-                <span>📍</span>
-                Use My Location
-            </button>
-
-            <p class="search-status" id="search-status" aria-live="polite"></p>
-        </section>
-
-        <section class="weather-dashboard hidden" id="weather-dashboard">
-            <div class="current-weather-card">
-                <div class="current-weather-header">
-                    <div>
-                        <h2 id="location-name">Location</h2>
-                        <p class="local-time" id="local-time"></p>
+                <form id="search-form" class="search-form" autocomplete="off">
+                    <div class="search-input-wrapper">
+                        <span class="search-icon" aria-hidden="true">⌕</span>
+                        <input
+                            type="search"
+                            id="city-input"
+                            placeholder="Search for a city..."
+                            aria-label="Search for a city"
+                            maxlength="100"
+                            required
+                        >
+                        <button type="button" id="location-button" class="location-button" aria-label="Use my current location" title="Use my current location">
+                            <span aria-hidden="true">◎</span>
+                        </button>
                     </div>
-                    <div class="main-weather-icon" id="main-weather-icon">🌤️</div>
-                </div>
+                    <button type="submit" id="search-button" class="primary-button">
+                        <span class="button-label">Search</span>
+                        <span class="button-spinner" aria-hidden="true"></span>
+                    </button>
+                </form>
 
-                <div class="current-weather-main">
-                    <div class="temperature-display">
-                        <span id="current-temperature">--</span>
-                        <span class="temperature-unit" id="current-unit">°C</span>
-                    </div>
-                    <p class="weather-description" id="weather-description">Weather condition</p>
-                </div>
-
-                <div class="weather-metrics">
-                    <article class="metric-card">
-                        <span class="metric-icon">💧</span>
-                        <h3>Humidity</h3>
-                        <p>
-                            <span id="humidity">--</span><span class="metric-unit">%</span>
-                        </p>
-                    </article>
-
-                    <article class="metric-card">
-                        <span class="metric-icon">💨</span>
-                        <h3>Wind Speed</h3>
-                        <p>
-                            <span id="wind-speed">--</span>
-                            <span class="metric-unit">km/h</span>
-                        </p>
-                    </article>
-
-                    <article class="metric-card">
-                        <span class="metric-icon">🌡️</span>
-                        <h3>Feels Like</h3>
-                        <p>
-                            <span id="feels-like">--</span>
-                            <span class="metric-unit temperature-unit-small">°C</span>
-                        </p>
-                    </article>
-
-                    <article class="metric-card">
-                        <span class="metric-icon">🌧️</span>
-                        <h3>Precipitation</h3>
-                        <p>
-                            <span id="precipitation">--</span>
-                            <span class="metric-unit">mm</span>
-                        </p>
-                    </article>
-                </div>
-
-                <div class="temperature-switch">
-                    <button type="button" class="unit-button active" id="celsius-button">°C</button>
-                    <button type="button" class="unit-button" id="fahrenheit-button">°F</button>
-                </div>
-            </div>
-
-            <section class="forecast-section">
-                <h2>5-Day Forecast</h2>
-                <div class="forecast-grid" id="forecast-grid"></div>
+                <div id="search-feedback" class="feedback-message" role="status" aria-live="polite"></div>
             </section>
-        </section>
 
-<section class="ai-assistant-section" id="ai-assistant-section">
-    <div class="ai-assistant-header">
-        <div class="ai-title">
-            <span class="ai-icon">✨</span>
-            <div>
-                <h2>AI Weather Assistant</h2>
-                <p>Smart insights powered by Gemini</p>
-            </div>
-        </div>
+            <section id="weather-section" class="weather-section" hidden>
+                <div id="weather-dashboard" class="weather-dashboard">
+                    <section class="current-weather-card panel">
+                        <div class="current-weather-top">
+                            <div>
+                                <span class="card-label">CURRENT WEATHER</span>
+                                <h2 id="current-city">--</h2>
+                                <p id="current-date" class="muted-text">--</p>
+                            </div>
+                            <span id="current-weather-icon" class="weather-icon" aria-hidden="true">☀️</span>
+                        </div>
 
-        <button type="button" class="ai-refresh-button" id="ai-refresh-button">
-            ✨ Generate Insights
-        </button>
-    </div>
+                        <div class="current-temperature">
+                            <span id="current-temperature">--°</span>
+                            <div class="current-condition">
+                                <p id="current-condition">--</p>
+                                <span id="feels-like">Feels like --°</span>
+                            </div>
+                        </div>
 
-    <div class="ai-insights-container" id="ai-insights-container">
-        <div class="ai-placeholder">
-            <span>🌤️</span>
-            <p>Search for a city to get personalized weather insights.</p>
-        </div>
-    </div>
+                        <div class="weather-details-grid">
+                            <div class="weather-detail">
+                                <span class="detail-icon" aria-hidden="true">💧</span>
+                                <div>
+                                    <span class="detail-label">Humidity</span>
+                                    <strong id="humidity-value">--%</strong>
+                                </div>
+                            </div>
 
-    <div class="ai-chat-container">
-        <h3>Ask about the weather</h3>
+                            <div class="weather-detail">
+                                <span class="detail-icon" aria-hidden="true">🌬️</span>
+                                <div>
+                                    <span class="detail-label">Wind speed</span>
+                                    <strong id="wind-value">-- km/h</strong>
+                                </div>
+                            </div>
 
-        <form class="ai-question-form" id="ai-question-form">
-            <input
-                type="text"
-                id="ai-question-input"
-                placeholder="Will it rain today? What should I wear?"
-                autocomplete="off"
-                aria-label="Ask the AI weather assistant"
-            >
-            <button type="submit" id="ai-question-button">Ask</button>
-        </form>
+                            <div class="weather-detail">
+                                <span class="detail-icon" aria-hidden="true">🌧️</span>
+                                <div>
+                                    <span class="detail-label">Precipitation</span>
+                                    <strong id="precipitation-value">-- mm</strong>
+                                </div>
+                            </div>
 
-        <div class="ai-answer-container" id="ai-answer-container"></div>
-    </div>
-</section>
+                            <div class="weather-detail">
+                                <span class="detail-icon" aria-hidden="true">🌡️</span>
+                                <div>
+                                    <span class="detail-label">Feels like</span>
+                                    <strong id="feels-detail">--°</strong>
+                                </div>
+                            </div>
+                        </div>
+                    </section>
 
+                    <section class="forecast-section panel">
+                        <div class="section-heading">
+                            <div>
+                                <span class="card-label">UPCOMING WEATHER</span>
+                                <h2>5-day forecast</h2>
+                            </div>
+                        </div>
+                        <div id="forecast-container" class="forecast-grid"></div>
+                    </section>
+                </div>
+            </section>
 
-        <section class="recent-searches-section">
-            <div class="section-header">
-                <h2>Recent Searches</h2>
-                <button type="button" class="clear-button" id="clear-searches">
-                    Clear
-                </button>
-            </div>
+            <section id="ai-assistant-section" class="ai-section panel" hidden>
+                <div class="section-heading ai-heading">
+                    <div>
+                        <span class="card-label">POWERED BY GEMINI</span>
+                        <h2>Weather intelligence</h2>
+                        <p class="muted-text">Personalized insights for your day.</p>
+                    </div>
+                    <button type="button" id="ai-refresh-button" class="secondary-button">
+                        <span class="refresh-icon" aria-hidden="true">↻</span>
+                        <span>Refresh insights</span>
+                    </button>
+                </div>
 
-            <div class="recent-searches" id="recent-searches">
-                <p class="empty-searches">No recent searches.</p>
-            </div>
-        </section>
+                <div id="ai-insights-container" class="ai-insights-container" aria-live="polite">
+                    <div class="ai-placeholder">
+                        <span class="ai-placeholder-icon" aria-hidden="true">✦</span>
+                        <p>AI weather insights will appear here.</p>
+                    </div>
+                </div>
 
-        <footer class="page-footer">
-            <p>
-                Weather data provided by
-                <a href="https://open-meteo.com/" target="_blank" rel="noopener noreferrer">
-                    Open-Meteo
-                </a>
-            </p>
+                <div class="ai-question-area">
+                    <h3>Ask your weather assistant</h3>
+                    <p class="muted-text">Get advice about today's weather or the upcoming forecast.</p>
+
+                    <form id="ai-question-form" class="ai-question-form">
+                        <input
+                            type="text"
+                            id="ai-question-input"
+                            placeholder="Should I go out today?"
+                            maxlength="500"
+                            aria-label="Ask a weather question"
+                            required
+                        >
+                        <button type="submit" id="ai-question-button" class="primary-button">
+                            <span class="button-label">Ask AI</span>
+                            <span class="button-spinner" aria-hidden="true"></span>
+                        </button>
+                    </form>
+
+                    <div id="ai-answer-container" class="ai-answer-container" aria-live="polite"></div>
+                </div>
+            </section>
+
+            <section id="recent-searches-section" class="recent-section panel" hidden>
+                <div class="section-heading">
+                    <div>
+                        <span class="card-label">YOUR ACTIVITY</span>
+                        <h2>Recent searches</h2>
+                    </div>
+                    <button type="button" id="clear-history-button" class="text-button">Clear history</button>
+                </div>
+                <div id="recent-searches-container" class="recent-searches-container"></div>
+            </section>
+
+            <section id="welcome-section" class="welcome-section panel">
+                <div class="welcome-icon" aria-hidden="true">🌤️</div>
+                <h2>Your next forecast is just a search away</h2>
+                <p>Search any city or use your location to get current conditions and a five-day forecast.</p>
+            </section>
+        </main>
+
+        <footer class="footer">
+            <p>Weatherly</p>
+            <span>Weather data provided by Open-Meteo · AI insights powered by Gemini</span>
         </footer>
-    </main>
+    </div>
 
-    
-    
-<script src="js/config.js"></script>
-<script src="js/weather.js"></script>
-<script src="js/storage.js"></script>
-<script src="js/location.js"></script>
-<script src="js/gemini.js"></script>
-<script src="js/app.js"></script>
+    <div id="global-toast" class="toast" role="status" aria-live="polite"></div>
 
+    <script src="js/config.js"></script>
+    <script src="js/weather.js"></script>
+    <script src="js/storage.js"></script>
+    <script src="js/location.js"></script>
+    <script src="js/gemini.js"></script>
+    <script src="js/app.js"></script>
 </body>
 </html>

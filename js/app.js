@@ -3,29 +3,30 @@ const searchForm = document.getElementById("search-form");
 const cityInput = document.getElementById("city-input");
 const searchButton = document.getElementById("search-button");
 const locationButton = document.getElementById("location-button");
-const searchStatus = document.getElementById("search-status");
-const weatherDashboard = document.getElementById("weather-dashboard");
+const searchFeedback = document.getElementById("search-feedback");
 
-const locationName = document.getElementById("location-name");
-const localTime = document.getElementById("local-time");
-const mainWeatherIcon = document.getElementById("main-weather-icon");
+const weatherSection = document.getElementById("weather-section");
+const welcomeSection = document.getElementById("welcome-section");
+const currentCity = document.getElementById("current-city");
+const currentDate = document.getElementById("current-date");
 const currentTemperature = document.getElementById("current-temperature");
-const currentUnit = document.getElementById("current-unit");
-const weatherDescription = document.getElementById("weather-description");
+const currentWeatherIcon = document.getElementById("current-weather-icon");
+const currentCondition = document.getElementById("current-condition");
+const feelsLike = document.getElementById("feels-like");
+const feelsDetail = document.getElementById("feels-detail");
+const humidityValue = document.getElementById("humidity-value");
+const windValue = document.getElementById("wind-value");
+const precipitationValue = document.getElementById("precipitation-value");
+const forecastContainer = document.getElementById("forecast-container");
 
-const humidityElement = document.getElementById("humidity");
-const windSpeedElement = document.getElementById("wind-speed");
-const feelsLikeElement = document.getElementById("feels-like");
-const precipitationElement = document.getElementById("precipitation");
-
-const forecastGrid = document.getElementById("forecast-grid");
 const celsiusButton = document.getElementById("celsius-button");
 const fahrenheitButton = document.getElementById("fahrenheit-button");
 
-const recentSearchesContainer = document.getElementById("recent-searches");
-const clearSearchesButton = document.getElementById("clear-searches");
+const recentSearchesSection = document.getElementById("recent-searches-section");
+const recentSearchesContainer = document.getElementById("recent-searches-container");
+const clearHistoryButton = document.getElementById("clear-history-button");
 
-
+const aiSection = document.getElementById("ai-assistant-section");
 const aiRefreshButton = document.getElementById("ai-refresh-button");
 const aiInsightsContainer = document.getElementById("ai-insights-container");
 const aiQuestionForm = document.getElementById("ai-question-form");
@@ -33,431 +34,606 @@ const aiQuestionInput = document.getElementById("ai-question-input");
 const aiQuestionButton = document.getElementById("ai-question-button");
 const aiAnswerContainer = document.getElementById("ai-answer-container");
 
+const toast = document.getElementById("global-toast");
 
 let currentWeatherData = null;
-let currentCityData = null;
-let currentUnitPreference = getTemperaturePreference();
+let currentLocationData = null;
+let temperatureUnit = getTemperatureUnit();
+let weatherRequestInProgress = false;
+let aiInsightsRequestInProgress = false;
+let aiQuestionRequestInProgress = false;
+let toastTimeout = null;
 
-searchForm.addEventListener("submit", async (event) => {
-    event.preventDefault();
+function showToast(message, type = "error") {
+    clearTimeout(toastTimeout);
 
-    const city = cityInput.value.trim();
+    toast.textContent = message;
+    toast.className = `toast show ${type}`;
 
-    if (!city) {
-        showStatus("Please enter a city name.", "error");
+    toastTimeout = setTimeout(() => {
+        toast.classList.remove("show");
+    }, 4000);
+}
+
+function setSearchFeedback(message = "", type = "") {
+    searchFeedback.textContent = message;
+    searchFeedback.className = `feedback-message ${type}`.trim();
+}
+
+function setButtonLoading(button, loading) {
+    button.disabled = loading;
+    button.classList.toggle("is-loading", loading);
+    button.setAttribute("aria-busy", String(loading));
+}
+
+function setTemperatureButtons() {
+    const isCelsius = temperatureUnit === "celsius";
+
+    celsiusButton.classList.toggle("active", isCelsius);
+    fahrenheitButton.classList.toggle("active", !isCelsius);
+
+    celsiusButton.setAttribute("aria-pressed", String(isCelsius));
+    fahrenheitButton.setAttribute("aria-pressed", String(!isCelsius));
+}
+
+function convertTemperature(value) {
+    if (temperatureUnit === "fahrenheit") {
+        return (value * 9 / 5) + 32;
+    }
+
+    return value;
+}
+
+function formatTemperature(value) {
+    return `${Math.round(convertTemperature(value))}°`;
+}
+
+function formatForecastDate(dateString) {
+    const date = new Date(`${dateString}T12:00:00`);
+
+    return date.toLocaleDateString(undefined, {
+        weekday: "short"
+    });
+}
+
+function formatCurrentDate(dateString) {
+    const date = new Date(dateString);
+
+    if (Number.isNaN(date.getTime())) {
+        return new Date().toLocaleDateString(undefined, {
+            weekday: "long",
+            month: "long",
+            day: "numeric"
+        });
+    }
+
+    return date.toLocaleDateString(undefined, {
+        weekday: "long",
+        month: "long",
+        day: "numeric"
+    });
+}
+
+function getWeatherDisplay(code) {
+    const info = getWeatherInfo(code);
+
+    return {
+        description: info.description || "Unknown weather",
+        icon: info.icon || "🌡️"
+    };
+}
+
+function renderCurrentWeather(weatherData, locationData) {
+    const current = weatherData.current;
+    const condition = getWeatherDisplay(current.weather_code);
+
+    currentCity.textContent =
+        locationData.name || locationData.city || "Unknown location";
+
+    if (locationData.country) {
+        currentCity.textContent += `, ${locationData.country}`;
+    }
+
+    currentDate.textContent = formatCurrentDate(current.time);
+
+    currentTemperature.textContent = formatTemperature(
+        current.temperature_2m
+    );
+
+    currentWeatherIcon.textContent = condition.icon;
+    currentCondition.textContent = condition.description;
+
+    feelsLike.textContent = `Feels like ${formatTemperature(
+        current.apparent_temperature
+    )}`;
+
+    feelsDetail.textContent = formatTemperature(
+        current.apparent_temperature
+    );
+
+    humidityValue.textContent = `${current.relative_humidity_2m}%`;
+    windValue.textContent = `${Math.round(current.wind_speed_10m)} km/h`;
+    precipitationValue.textContent = `${current.precipitation ?? 0} mm`;
+}
+
+function renderForecast(weatherData) {
+    const daily = weatherData.daily;
+
+    forecastContainer.replaceChildren();
+
+    daily.time.forEach((date, index) => {
+        const condition = getWeatherDisplay(daily.weather_code[index]);
+
+        const card = document.createElement("article");
+        card.className = "forecast-card";
+
+        const day = document.createElement("div");
+        day.className = "forecast-day";
+        day.textContent = index === 0 ? "Today" : formatForecastDate(date);
+
+        const icon = document.createElement("span");
+        icon.className = "forecast-icon";
+        icon.textContent = condition.icon;
+        icon.setAttribute("aria-label", condition.description);
+
+        const description = document.createElement("div");
+        description.className = "forecast-condition";
+        description.textContent = condition.description;
+
+        const temperatures = document.createElement("div");
+        temperatures.className = "forecast-temperatures";
+
+        const high = document.createElement("span");
+        high.className = "forecast-high";
+        high.textContent = formatTemperature(
+            daily.temperature_2m_max[index]
+        );
+
+        const low = document.createElement("span");
+        low.className = "forecast-low";
+        low.textContent = formatTemperature(
+            daily.temperature_2m_min[index]
+        );
+
+        temperatures.append(high, low);
+
+        const precipitation = document.createElement("div");
+        precipitation.className = "forecast-precipitation";
+        precipitation.textContent =
+            `💧 ${daily.precipitation_probability_max[index] ?? 0}%`;
+
+        card.append(
+            day,
+            icon,
+            description,
+            temperatures,
+            precipitation
+        );
+
+        forecastContainer.appendChild(card);
+    });
+}
+
+function renderWeatherDashboard(weatherData, locationData) {
+    currentWeatherData = weatherData;
+    currentLocationData = locationData;
+
+    weatherSection.hidden = false;
+    welcomeSection.hidden = true;
+    aiSection.hidden = false;
+
+    renderCurrentWeather(weatherData, locationData);
+    renderForecast(weatherData);
+    setTemperatureButtons();
+
+    aiAnswerContainer.replaceChildren();
+
+    generateAIWeatherInsights();
+
+    window.scrollTo({
+        top: weatherSection.offsetTop - 20,
+        behavior: "smooth"
+    });
+}
+
+function renderTemperature() {
+    if (!currentWeatherData || !currentLocationData) {
+        return;
+    }
+
+    renderCurrentWeather(currentWeatherData, currentLocationData);
+    renderForecast(currentWeatherData);
+    setTemperatureButtons();
+}
+
+function showWeatherLoading() {
+    weatherSection.hidden = false;
+    welcomeSection.hidden = true;
+
+    currentCity.textContent = "Loading weather...";
+    currentDate.textContent = "Please wait";
+    currentTemperature.textContent = "--°";
+    currentCondition.textContent = "Fetching weather data";
+    currentWeatherIcon.textContent = "🌤️";
+
+    feelsLike.textContent = "Feels like --°";
+    feelsDetail.textContent = "--°";
+    humidityValue.textContent = "--%";
+    windValue.textContent = "-- km/h";
+    precipitationValue.textContent = "-- mm";
+
+    forecastContainer.replaceChildren();
+
+    for (let index = 0; index < 5; index++) {
+        const card = document.createElement("div");
+        card.className = "forecast-card skeleton";
+        card.style.height = "180px";
+        forecastContainer.appendChild(card);
+    }
+
+    aiSection.hidden = true;
+}
+
+function normalizeLocation(location) {
+    return {
+        name: location.name || location.city || "Unknown location",
+        country: location.country || "",
+        latitude: location.latitude,
+        longitude: location.longitude
+    };
+}
+
+async function searchWeatherByCity(city) {
+    if (weatherRequestInProgress) {
+        return;
+    }
+
+    const normalizedCity = city.trim();
+
+    if (!normalizedCity) {
+        setSearchFeedback("Please enter a city name.", "error");
         cityInput.focus();
         return;
     }
 
-    await loadCityWeather(city);
-});
-
-locationButton.addEventListener("click", loadLocationWeather);
-
-celsiusButton.addEventListener("click", () => {
-    setTemperatureUnit("celsius");
-});
-
-fahrenheitButton.addEventListener("click", () => {
-    setTemperatureUnit("fahrenheit");
-});
-
-clearSearchesButton.addEventListener("click", () => {
-    clearRecentSearches();
-    renderRecentSearches();
-    showStatus("Recent searches cleared.", "success");
-});
-
-async function loadCityWeather(city) {
-    setLoading(true);
-    showStatus(`Searching weather for ${city}...`);
+    weatherRequestInProgress = true;
+    setButtonLoading(searchButton, true);
+    setSearchFeedback("Searching for weather...");
+    showWeatherLoading();
 
     try {
-        const cityData = await searchCity(city);
+        const location = await searchCity(normalizedCity);
+
+        if (!location) {
+            throw new Error("City not found. Try another city name.");
+        }
+
+        const normalizedLocation = normalizeLocation(location);
 
         const weatherData = await getWeather(
-            cityData.latitude,
-            cityData.longitude
+            normalizedLocation.latitude,
+            normalizedLocation.longitude
         );
 
-        const normalizedCity = {
-            name: cityData.name,
-            displayName: getFullLocationName(cityData),
-            latitude: cityData.latitude,
-            longitude: cityData.longitude,
-            country: cityData.country || "",
-            admin1: cityData.admin1 || ""
-        };
+        if (!weatherData || !weatherData.current || !weatherData.daily) {
+            throw new Error("Weather information is unavailable for this city.");
+        }
 
-        currentCityData = normalizedCity;
-        currentWeatherData = weatherData;
+        addRecentSearch(normalizedLocation.name);
 
-        saveRecentSearch(normalizedCity);
-        renderRecentSearches();
-        renderWeatherDashboard(normalizedCity, weatherData);
+        renderWeatherDashboard(weatherData, normalizedLocation);
 
-        weatherDashboard.classList.remove("hidden");
         cityInput.value = "";
+        setSearchFeedback(
+            `Weather loaded for ${normalizedLocation.name}.`,
+            "success"
+        );
 
-        showStatus(`Weather loaded for ${cityData.name}.`, "success");
+        renderRecentSearches();
     } catch (error) {
-        showStatus(
-            error.message || "Something went wrong. Please try again.",
+        weatherSection.hidden = true;
+        welcomeSection.hidden = false;
+        aiSection.hidden = true;
+
+        setSearchFeedback(
+            error.message || "Unable to load weather. Please try again.",
             "error"
         );
+
+        showToast(
+            error.message || "Something went wrong while loading weather."
+        );
     } finally {
-        setLoading(false);
+        weatherRequestInProgress = false;
+        setButtonLoading(searchButton, false);
     }
 }
 
-async function loadLocationWeather() {
-    setLoading(true);
-    showStatus("Detecting your location...");
+async function handleLocationSearch() {
+    if (weatherRequestInProgress) {
+        return;
+    }
+
+    weatherRequestInProgress = true;
+    locationButton.disabled = true;
+    setButtonLoading(searchButton, true);
+    setSearchFeedback("Getting your location...");
+    showWeatherLoading();
 
     try {
-        const coordinates = await getCurrentLocation();
+        const location = await getCurrentLocation();
 
-        const weatherData = await getWeather(
-            coordinates.latitude,
-            coordinates.longitude
-        );
+        const latitude = location.latitude;
+        const longitude = location.longitude;
+
+        const weatherData = await getWeather(latitude, longitude);
+
+        if (!weatherData || !weatherData.current || !weatherData.daily) {
+            throw new Error("Unable to retrieve weather for your location.");
+        }
 
         const locationData = {
-            name: "Your Location",
-            displayName: "Your Location",
-            latitude: coordinates.latitude,
-            longitude: coordinates.longitude,
-            country: "",
-            admin1: ""
+            name: location.name || "Your location",
+            country: location.country || "",
+            latitude,
+            longitude
         };
 
-        currentCityData = locationData;
-        currentWeatherData = weatherData;
+        renderWeatherDashboard(weatherData, locationData);
 
-        saveRecentSearch(locationData);
-        renderRecentSearches();
-        renderWeatherDashboard(locationData, weatherData);
-
-        weatherDashboard.classList.remove("hidden");
-
-        showStatus("Weather loaded for your current location.", "success");
+        setSearchFeedback("Weather for your current location loaded.", "success");
     } catch (error) {
-        showStatus(
-            error.message || "Unable to detect your location.",
+        weatherSection.hidden = true;
+        welcomeSection.hidden = false;
+        aiSection.hidden = true;
+
+        setSearchFeedback(
+            error.message || "Unable to access your location.",
             "error"
         );
-    } finally {
-        setLoading(false);
-    }
-}
 
-async function loadRecentWeather(search) {
-    setLoading(true);
-    showStatus(`Loading weather for ${search.displayName}...`);
-
-    try {
-        const weatherData = await getWeather(
-            search.latitude,
-            search.longitude
-        );
-
-        currentCityData = search;
-        currentWeatherData = weatherData;
-
-        saveRecentSearch(search);
-        renderRecentSearches();
-        renderWeatherDashboard(search, weatherData);
-
-        weatherDashboard.classList.remove("hidden");
-
-        showStatus(`Weather loaded for ${search.displayName}.`, "success");
-    } catch (error) {
-        showStatus(
-            error.message || "Unable to retrieve weather data.",
-            "error"
+        showToast(
+            error.message || "Location request failed."
         );
     } finally {
-        setLoading(false);
-    }
-}
-
-function renderWeatherDashboard(cityData, weatherData) {
-    const current = weatherData.current;
-    const timezone = weatherData.timezone;
-    const condition = getWeatherInfo(current.weather_code);
-
-    locationName.textContent = cityData.displayName;
-    localTime.textContent = `Local time: ${formatLocalTime(current.time, timezone)}`;
-    mainWeatherIcon.textContent = condition.icon;
-    weatherDescription.textContent = condition.description;
-
-    humidityElement.textContent = current.relative_humidity_2m;
-    windSpeedElement.textContent = current.wind_speed_10m.toFixed(1);
-    precipitationElement.textContent = current.precipitation.toFixed(1);
-
-    renderTemperature();
-}
-
-function getFullLocationName(cityData) {
-    const parts = [
-        cityData.name,
-        cityData.admin1,
-        cityData.country
-    ].filter(Boolean);
-
-    return [...new Set(parts)].join(", ");
-}
-
-function renderTemperature() {
-    if (!currentWeatherData) return;
-
-    const current = currentWeatherData.current;
-
-    const temperature = convertTemperature(
-        current.temperature_2m,
-        currentUnitPreference
-    );
-
-    const feelsLike = convertTemperature(
-        current.apparent_temperature,
-        currentUnitPreference
-    );
-
-    currentTemperature.textContent = Math.round(temperature);
-    feelsLikeElement.textContent = feelsLike.toFixed(1);
-
-    const unitSymbol = currentUnitPreference === "celsius" ? "°C" : "°F";
-
-    currentUnit.textContent = unitSymbol;
-
-    document.querySelectorAll(".temperature-unit-small").forEach((element) => {
-        element.textContent = unitSymbol;
-    });
-
-    renderForecast(currentWeatherData.daily, currentWeatherData.timezone);
-}
-
-function renderForecast(daily, timezone) {
-    forecastGrid.innerHTML = "";
-
-    for (let index = 0; index < daily.time.length; index++) {
-        const condition = getWeatherInfo(daily.weather_code[index]);
-
-        const maxTemperature = formatTemperature(
-            daily.temperature_2m_max[index],
-            currentUnitPreference
-        );
-
-        const minTemperature = formatTemperature(
-            daily.temperature_2m_min[index],
-            currentUnitPreference
-        );
-
-        const rainProbability = daily.precipitation_probability_max[index];
-
-        const forecastCard = document.createElement("article");
-        forecastCard.className = "forecast-card";
-
-        forecastCard.innerHTML = `
-            <h3 class="forecast-date">${formatDate(daily.time[index], timezone)}</h3>
-            <span class="forecast-icon">${condition.icon}</span>
-            <p class="forecast-description">${condition.description}</p>
-            <p class="forecast-temperatures">${maxTemperature}° / ${minTemperature}°</p>
-            <p class="forecast-rain">💧 ${rainProbability ?? 0}% rain</p>
-        `;
-
-        forecastGrid.appendChild(forecastCard);
-    }
-}
-
-function setTemperatureUnit(unit) {
-    currentUnitPreference = unit;
-    saveTemperaturePreference(unit);
-
-    celsiusButton.classList.toggle("active", unit === "celsius");
-    fahrenheitButton.classList.toggle("active", unit === "fahrenheit");
-
-    if (currentWeatherData) {
-        renderTemperature();
+        weatherRequestInProgress = false;
+        locationButton.disabled = false;
+        setButtonLoading(searchButton, false);
     }
 }
 
 function renderRecentSearches() {
     const searches = getRecentSearches();
 
-    recentSearchesContainer.innerHTML = "";
+    recentSearchesContainer.replaceChildren();
 
-    if (searches.length === 0) {
-        const emptyMessage = document.createElement("p");
-        emptyMessage.className = "empty-searches";
-        emptyMessage.textContent = "No recent searches.";
-
-        recentSearchesContainer.appendChild(emptyMessage);
+    if (!searches || searches.length === 0) {
+        recentSearchesSection.hidden = true;
         return;
     }
 
-    searches.forEach((search) => {
-        const button = document.createElement("button");
+    recentSearchesSection.hidden = false;
 
+    searches.forEach(city => {
+        const button = document.createElement("button");
         button.type = "button";
         button.className = "recent-search-item";
-        button.textContent = search.displayName;
+        button.textContent = `⌕ ${city}`;
+        button.setAttribute("aria-label", `Search weather for ${city}`);
 
         button.addEventListener("click", () => {
-            loadRecentWeather(search);
+            searchWeatherByCity(city);
         });
 
         recentSearchesContainer.appendChild(button);
     });
 }
 
-function showStatus(message, type = "") {
-    searchStatus.textContent = message;
-    searchStatus.className = `search-status ${type}`;
-}
-
-function setLoading(isLoading) {
-    searchButton.disabled = isLoading;
-    locationButton.disabled = isLoading;
-    cityInput.disabled = isLoading;
-
-    searchButton.textContent = isLoading ? "Loading..." : "Search";
-    locationButton.textContent = isLoading
-        ? "Please wait..."
-        : "📍 Use My Location";
-}
-
-function initializeApp() {
-    celsiusButton.classList.toggle(
-        "active",
-        currentUnitPreference === "celsius"
-    );
-
-    fahrenheitButton.classList.toggle(
-        "active",
-        currentUnitPreference === "fahrenheit"
-    );
-
+function clearSearchHistory() {
+    clearRecentSearches();
     renderRecentSearches();
+    showToast("Recent searches cleared.", "success");
 }
 
-initializeApp();
+function renderAIContent(text, container) {
+    container.replaceChildren();
 
+    const lines = text.split("\n");
+    let currentParagraph = null;
 
+    lines.forEach(line => {
+        const trimmedLine = line.trim();
 
-aiRefreshButton.addEventListener("click", generateAIWeatherInsights);
+        if (!trimmedLine) {
+            currentParagraph = null;
+            return;
+        }
 
-aiQuestionForm.addEventListener("submit", async (event) => {
-    event.preventDefault();
+        const headingMatch = trimmedLine.match(
+            /^\*{0,2}(#{1,3}\s+|\*\*)(.+?)(?:\*\*)?$/
+            );
 
-    const question = aiQuestionInput.value.trim();
+        if (headingMatch) {
+            const heading = document.createElement("h3");
+            heading.textContent = headingMatch[2].replace(/\*\*/g, "").trim();
+            container.appendChild(heading);
+            currentParagraph = null;
+            return;
+        }
 
-    if (!question) {
-        aiAnswerContainer.innerHTML = `
-            <div class="ai-answer-card ai-error">
-                Please enter a question.
-            </div>
-        `;
-        return;
-    }
+        if (/^[-*]\s/.test(trimmedLine)) {
+            const paragraph = document.createElement("p");
+            paragraph.textContent = `• ${trimmedLine.replace(/^[-*]\s/, "")}`;
+            container.appendChild(paragraph);
+            currentParagraph = null;
+            return;
+        }
 
-    if (!currentWeatherData) {
-        aiAnswerContainer.innerHTML = `
-            <div class="ai-answer-card ai-error">
-                Please search for a city first.
-            </div>
-        `;
-        return;
-    }
+        if (!currentParagraph) {
+            currentParagraph = document.createElement("p");
+            container.appendChild(currentParagraph);
+        }
 
-    await handleAIQuestion(question);
-});
+        currentParagraph.textContent +=
+            `${currentParagraph.textContent ? " " : ""}${trimmedLine.replace(/\*\*/g, "")}`;
+    });
+}
+
+function showAILoading(container, message) {
+    container.replaceChildren();
+
+    const loading = document.createElement("div");
+    loading.className = "loading-message";
+
+    const spinner = document.createElement("span");
+    spinner.className = "loading-spinner";
+    spinner.setAttribute("aria-hidden", "true");
+
+    const text = document.createElement("span");
+    text.textContent = message;
+
+    loading.append(spinner, text);
+    container.appendChild(loading);
+}
 
 async function generateAIWeatherInsights() {
-    if (!currentWeatherData) {
-        aiInsightsContainer.innerHTML = `
-            <div class="ai-placeholder">
-                <span>🌤️</span>
-                <p>Search for a city to get personalized weather insights.</p>
-            </div>
-        `;
+    if (!currentWeatherData || aiInsightsRequestInProgress) {
         return;
     }
 
+    aiInsightsRequestInProgress = true;
     aiRefreshButton.disabled = true;
-    aiRefreshButton.textContent = "Generating...";
-    aiInsightsContainer.innerHTML = `
-        <div class="ai-loading">
-            <span class="ai-loading-spinner"></span>
-            <span>Gemini is analyzing the weather...</span>
-        </div>
-    `;
+    aiRefreshButton.classList.add("is-loading");
+    aiRefreshButton.setAttribute("aria-busy", "true");
+
+    showAILoading(
+        aiInsightsContainer,
+        "Analyzing current weather and forecast..."
+    );
 
     try {
         const insights = await generateWeatherInsights(currentWeatherData);
-
-        aiInsightsContainer.innerHTML = "";
-
-        const content = document.createElement("div");
-        content.className = "ai-insights-content";
-        content.textContent = insights;
-
-        aiInsightsContainer.appendChild(content);
+        renderAIContent(insights, aiInsightsContainer);
     } catch (error) {
-        aiInsightsContainer.innerHTML = "";
+        aiInsightsContainer.replaceChildren();
 
         const errorMessage = document.createElement("p");
-        errorMessage.className = "ai-error";
-        errorMessage.textContent = error.message || "Unable to generate weather insights.";
+        errorMessage.className = "ai-answer error";
+        errorMessage.textContent =
+            error.message || "Unable to generate weather insights.";
 
         aiInsightsContainer.appendChild(errorMessage);
+
+        showToast("AI weather insights could not be generated.");
     } finally {
+        aiInsightsRequestInProgress = false;
         aiRefreshButton.disabled = false;
-        aiRefreshButton.textContent = "✨ Generate Insights";
+        aiRefreshButton.classList.remove("is-loading");
+        aiRefreshButton.setAttribute("aria-busy", "false");
     }
 }
 
 async function handleAIQuestion(question) {
-    aiQuestionButton.disabled = true;
-    aiQuestionInput.disabled = true;
-    aiQuestionButton.textContent = "Thinking...";
+    if (!currentWeatherData || aiQuestionRequestInProgress) {
+        return;
+    }
 
-    aiAnswerContainer.innerHTML = `
-        <div class="ai-answer-card">
-            <div class="ai-loading">
-                <span class="ai-loading-spinner"></span>
-                <span>Gemini is preparing your answer...</span>
-            </div>
-        </div>
-    `;
+    const normalizedQuestion = question.trim();
+
+    if (!normalizedQuestion) {
+        aiQuestionInput.focus();
+        return;
+    }
+
+    aiQuestionRequestInProgress = true;
+    aiQuestionButton.disabled = true;
+    aiQuestionButton.classList.add("is-loading");
+    aiQuestionButton.setAttribute("aria-busy", "true");
+    aiQuestionInput.disabled = true;
+
+    showAILoading(
+        aiAnswerContainer,
+        "Your weather assistant is thinking..."
+    );
 
     try {
         const answer = await askWeatherQuestion(
-            question,
+            normalizedQuestion,
             currentWeatherData
         );
 
-        aiAnswerContainer.innerHTML = "";
-
         const answerCard = document.createElement("div");
-        answerCard.className = "ai-answer-card";
-        answerCard.textContent = answer;
+        answerCard.className = "ai-answer";
+        renderAIContent(answer, answerCard);
 
-        aiAnswerContainer.appendChild(answerCard);
-
+        aiAnswerContainer.replaceChildren(answerCard);
         aiQuestionInput.value = "";
     } catch (error) {
-        aiAnswerContainer.innerHTML = "";
-
         const errorCard = document.createElement("div");
-        errorCard.className = "ai-answer-card ai-error";
-        errorCard.textContent = error.message || "Unable to get an AI response.";
+        errorCard.className = "ai-answer error";
+        errorCard.textContent =
+            error.message || "Unable to answer your question right now.";
 
-        aiAnswerContainer.appendChild(errorCard);
+        aiAnswerContainer.replaceChildren(errorCard);
+
+        showToast("Your AI request could not be completed.");
     } finally {
+        aiQuestionRequestInProgress = false;
         aiQuestionButton.disabled = false;
+        aiQuestionButton.classList.remove("is-loading");
+        aiQuestionButton.setAttribute("aria-busy", "false");
         aiQuestionInput.disabled = false;
-        aiQuestionButton.textContent = "Ask";
     }
 }
 
+function initializeTemperaturePreference() {
+    temperatureUnit = getTemperatureUnit() || "celsius";
+
+    setTemperatureButtons();
+}
+
+searchForm.addEventListener("submit", event => {
+    event.preventDefault();
+
+    searchWeatherByCity(cityInput.value);
+});
+
+locationButton.addEventListener("click", handleLocationSearch);
+
+celsiusButton.addEventListener("click", () => {
+    if (temperatureUnit === "celsius") {
+        return;
+    }
+
+    temperatureUnit = "celsius";
+    setTemperatureUnit(temperatureUnit);
+    renderTemperature();
+});
+
+fahrenheitButton.addEventListener("click", () => {
+    if (temperatureUnit === "fahrenheit") {
+        return;
+    }
+
+    temperatureUnit = "fahrenheit";
+    setTemperatureUnit(temperatureUnit);
+    renderTemperature();
+});
+
+clearHistoryButton.addEventListener("click", clearSearchHistory);
+
+aiRefreshButton.addEventListener("click", generateAIWeatherInsights);
+
+aiQuestionForm.addEventListener("submit", event => {
+    event.preventDefault();
+    handleAIQuestion(aiQuestionInput.value);
+});
+
+cityInput.addEventListener("input", () => {
+    if (searchFeedback.classList.contains("error")) {
+        setSearchFeedback();
+    }
+});
+
+initializeTemperaturePreference();
+renderRecentSearches();
