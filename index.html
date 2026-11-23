@@ -107,6 +107,47 @@
             </section>
         </section>
 
+<section class="ai-assistant-section" id="ai-assistant-section">
+    <div class="ai-assistant-header">
+        <div class="ai-title">
+            <span class="ai-icon">✨</span>
+            <div>
+                <h2>AI Weather Assistant</h2>
+                <p>Smart insights powered by Gemini</p>
+            </div>
+        </div>
+
+        <button type="button" class="ai-refresh-button" id="ai-refresh-button">
+            ✨ Generate Insights
+        </button>
+    </div>
+
+    <div class="ai-insights-container" id="ai-insights-container">
+        <div class="ai-placeholder">
+            <span>🌤️</span>
+            <p>Search for a city to get personalized weather insights.</p>
+        </div>
+    </div>
+
+    <div class="ai-chat-container">
+        <h3>Ask about the weather</h3>
+
+        <form class="ai-question-form" id="ai-question-form">
+            <input
+                type="text"
+                id="ai-question-input"
+                placeholder="Will it rain today? What should I wear?"
+                autocomplete="off"
+                aria-label="Ask the AI weather assistant"
+            >
+            <button type="submit" id="ai-question-button">Ask</button>
+        </form>
+
+        <div class="ai-answer-container" id="ai-answer-container"></div>
+    </div>
+</section>
+
+
         <section class="recent-searches-section">
             <div class="section-header">
                 <h2>Recent Searches</h2>
@@ -131,10 +172,13 @@
     </main>
 
     
-    <script src="js/weather.js"></script>
-    <script src="js/storage.js"></script>
-    <script src="js/location.js"></script>
-    <script src="js/app.js"></script>
+    
+<script src="js/config.js"></script>
+<script src="js/weather.js"></script>
+<script src="js/storage.js"></script>
+<script src="js/location.js"></script>
+<script src="js/gemini.js"></script>
+<script src="js/app.js"></script>
 
 </body>
 </html>

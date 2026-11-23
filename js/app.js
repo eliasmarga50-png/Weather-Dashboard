@@ -25,6 +25,15 @@ const fahrenheitButton = document.getElementById("fahrenheit-button");
 const recentSearchesContainer = document.getElementById("recent-searches");
 const clearSearchesButton = document.getElementById("clear-searches");
 
+
+const aiRefreshButton = document.getElementById("ai-refresh-button");
+const aiInsightsContainer = document.getElementById("ai-insights-container");
+const aiQuestionForm = document.getElementById("ai-question-form");
+const aiQuestionInput = document.getElementById("ai-question-input");
+const aiQuestionButton = document.getElementById("ai-question-button");
+const aiAnswerContainer = document.getElementById("ai-answer-container");
+
+
 let currentWeatherData = null;
 let currentCityData = null;
 let currentUnitPreference = getTemperaturePreference();
@@ -333,3 +342,122 @@ function initializeApp() {
 }
 
 initializeApp();
+
+
+
+aiRefreshButton.addEventListener("click", generateAIWeatherInsights);
+
+aiQuestionForm.addEventListener("submit", async (event) => {
+    event.preventDefault();
+
+    const question = aiQuestionInput.value.trim();
+
+    if (!question) {
+        aiAnswerContainer.innerHTML = `
+            <div class="ai-answer-card ai-error">
+                Please enter a question.
+            </div>
+        `;
+        return;
+    }
+
+    if (!currentWeatherData) {
+        aiAnswerContainer.innerHTML = `
+            <div class="ai-answer-card ai-error">
+                Please search for a city first.
+            </div>
+        `;
+        return;
+    }
+
+    await handleAIQuestion(question);
+});
+
+async function generateAIWeatherInsights() {
+    if (!currentWeatherData) {
+        aiInsightsContainer.innerHTML = `
+            <div class="ai-placeholder">
+                <span>🌤️</span>
+                <p>Search for a city to get personalized weather insights.</p>
+            </div>
+        `;
+        return;
+    }
+
+    aiRefreshButton.disabled = true;
+    aiRefreshButton.textContent = "Generating...";
+    aiInsightsContainer.innerHTML = `
+        <div class="ai-loading">
+            <span class="ai-loading-spinner"></span>
+            <span>Gemini is analyzing the weather...</span>
+        </div>
+    `;
+
+    try {
+        const insights = await generateWeatherInsights(currentWeatherData);
+
+        aiInsightsContainer.innerHTML = "";
+
+        const content = document.createElement("div");
+        content.className = "ai-insights-content";
+        content.textContent = insights;
+
+        aiInsightsContainer.appendChild(content);
+    } catch (error) {
+        aiInsightsContainer.innerHTML = "";
+
+        const errorMessage = document.createElement("p");
+        errorMessage.className = "ai-error";
+        errorMessage.textContent = error.message || "Unable to generate weather insights.";
+
+        aiInsightsContainer.appendChild(errorMessage);
+    } finally {
+        aiRefreshButton.disabled = false;
+        aiRefreshButton.textContent = "✨ Generate Insights";
+    }
+}
+
+async function handleAIQuestion(question) {
+    aiQuestionButton.disabled = true;
+    aiQuestionInput.disabled = true;
+    aiQuestionButton.textContent = "Thinking...";
+
+    aiAnswerContainer.innerHTML = `
+        <div class="ai-answer-card">
+            <div class="ai-loading">
+                <span class="ai-loading-spinner"></span>
+                <span>Gemini is preparing your answer...</span>
+            </div>
+        </div>
+    `;
+
+    try {
+        const answer = await askWeatherQuestion(
+            question,
+            currentWeatherData
+        );
+
+        aiAnswerContainer.innerHTML = "";
+
+        const answerCard = document.createElement("div");
+        answerCard.className = "ai-answer-card";
+        answerCard.textContent = answer;
+
+        aiAnswerContainer.appendChild(answerCard);
+
+        aiQuestionInput.value = "";
+    } catch (error) {
+        aiAnswerContainer.innerHTML = "";
+
+        const errorCard = document.createElement("div");
+        errorCard.className = "ai-answer-card ai-error";
+        errorCard.textContent = error.message || "Unable to get an AI response.";
+
+        aiAnswerContainer.appendChild(errorCard);
+    } finally {
+        aiQuestionButton.disabled = false;
+        aiQuestionInput.disabled = false;
+        aiQuestionButton.textContent = "Ask";
+    }
+}
+
