@@ -1,0 +1,62 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Check current weather conditions and forecasts for any city with Weather Dashboard.">
+    <title>Weather Dashboard</title>
+    <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+    <main class="app-container">
+        <header class="page-header">
+            <div class="title-wrapper">
+                <span class="header-icon">🌤️</span>
+                <h1>Weather Dashboard</h1>
+            </div>
+            <p>Check current weather and forecast for any city</p>
+        </header>
+
+        <section class="search-section">
+            <form class="search-form" id="search-form">
+                <input
+                    type="text"
+                    id="city-input"
+                    placeholder="Enter city name..."
+                    aria-label="Enter city name"
+                    autocomplete="off"
+                >
+                <button type="submit" class="search-button">Search</button>
+            </form>
+
+            <button type="button" class="location-button" id="location-button">
+                <span>📍</span>
+                Use My Location
+            </button>
+        </section>
+
+        <section class="recent-searches-section">
+            <div class="section-header">
+                <h2>Recent Searches</h2>
+                <button type="button" class="clear-button" id="clear-searches">
+                    Clear
+                </button>
+            </div>
+
+            <div class="recent-searches" id="recent-searches">
+                <p class="empty-searches">No recent searches.</p>
+            </div>
+        </section>
+
+        <footer class="page-footer">
+            <p>
+                Weather data provided by
+                <a href="https://open-meteo.com/" target="_blank" rel="noopener noreferrer">
+                    Open-Meteo
+                </a>
+            </p>
+        </footer>
+    </main>
+</body>
+</html>
